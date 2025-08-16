@@ -1,0 +1,9 @@
+rule BanForbiddenFunctions {
+    block system {
+        error "The function system() is forbidden due to command injection risks."
+    }
+
+    block gets {
+        error "The function gets() is forbidden due to buffer overflow risks."
+    }
+}

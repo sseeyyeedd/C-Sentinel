@@ -16,7 +16,7 @@ class RuleVisitor(CSentinelVisitor):
     def __init__(self):
         self.rules = []
 
-    def visitDslFile(self, ctx):
+    def visitSenFile(self, ctx):
         for rule_ctx in ctx.rule_():
             self.visit(rule_ctx)
         return self.rules
@@ -47,7 +47,7 @@ def parse_dsl_rules(file_path):
     lexer = CSentinelLexer(stream)
     tokens = CommonTokenStream(lexer)
     parser = CSentinelParser(tokens)
-    tree = parser.dslFile()
+    tree = parser.senFile()
 
     visitor = RuleVisitor()
     rules = visitor.visit(tree)
