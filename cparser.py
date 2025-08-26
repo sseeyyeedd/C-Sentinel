@@ -1,41 +1,43 @@
-# cparser.py (Final Diagnostic Version)
-import os
-import subprocess
+# cparser.py (Final, Pure Python Version)
+import re
 import pycparser
 
+# A minimal set of C type definitions that pycparser needs to parse
+# standard C code. This string contains no preprocessor directives.
+MINIMAL_C_DEFS = """
+    typedef int size_t;
+    typedef int __builtin_va_list;
+    typedef int __gnuc_va_list;
+    typedef int va_list;
+    typedef int __int64_t;
+    typedef int __uint64_t;
+    typedef int FILE;
+    typedef int ptrdiff_t;
+"""
 
 def parse_c_code(file_path):
     """
-    This is a diagnostic version to find the exact reason the
-    preprocessor is failing.
+    Parses a C file using a pure Python approach. It combines a minimal
+    set of C definitions with the source code after stripping all
+    preprocessor directives (#include, #define, etc.).
     """
-    print("[*] Preparing to preprocess the C file...")
     try:
-        # Step 1: Find the path to pycparser's fake headers
-        pycparser_path = os.path.dirname(pycparser.__file__)
-        fake_includes_path = os.path.join(pycparser_path, 'utils', 'fake_includes')
+        # Step 1: Read the user's source code
+        with open(file_path, 'r', encoding='utf-8') as f:
+            user_code = f.read()
 
-        print(f"[*] Found fake includes path at: {fake_includes_path}")
+        # Step 2: Remove ALL preprocessor directives from the user's code.
+        # This regex finds any line starting with '#' and removes it.
+        cleaned_code = re.sub(r'^#.*$', '', user_code, flags=re.MULTILINE)
 
-        # Step 2: Build the complete command
-        command = [
-            'gcc',
-            '-E',
-            '-nostdinc',
-            '-I' + fake_includes_path,
-            file_path
-        ]
+        # Step 3: Combine our minimal definitions with the cleaned user code.
+        full_code_to_parse = MINIMAL_C_DEFS + cleaned_code
 
-        # --- DIAGNOSTIC STEP ---
-        print("\n--- Please run the following command manually in your terminal ---")
-        # To make it easy to copy, we'll format it as a single string
-        command_str = ' '.join(f'"{c}"' if ' ' in c else c for c in command)
-        print(f"\n{command_str}\n")
-        print("--- After running it, report if it succeeded or failed ---")
-        import sys
-        sys.exit()
-        # --- END DIAGNOSTIC STEP ---
+        # Step 4: Parse the final, pure C code string.
+        parser = pycparser.CParser()
+        ast = parser.parse(full_code_to_parse, filename=file_path)
+        return ast
 
     except Exception as e:
-        print(f"[!] An error occurred before preprocessing: {e}")
+        print(f"[!] Error parsing C code: {e}")
         return None

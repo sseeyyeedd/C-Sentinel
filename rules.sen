@@ -2,8 +2,18 @@ rule BanForbiddenFunctions {
     block system {
         error "The function system() is forbidden due to command injection risks."
     }
-
-    block gets {
-        error "The function gets() is forbidden due to buffer overflow risks."
+}
+rule IntegerOverflowCheck {
+    on call safe_malloc(size) {
+        if size1 + size2 overflows {
+            error "Potential integer overflow in size calculation for safe_malloc."
+        }
+    }
+}
+rule FormatStringCheck {
+    on call printf() {
+        require_literal_format {
+            error "First argument to printf must be a string literal to prevent format string vulnerabilities."
+        }
     }
 }

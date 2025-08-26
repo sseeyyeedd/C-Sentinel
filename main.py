@@ -2,7 +2,7 @@ from antlr4 import *
 import argparse
 from parser import parse_dsl_rules
 from cparser import parse_c_code
-
+from engine import SecurityAuditor
 
 def main():
     # بخش ۱: دریافت ورودی‌ها از خط فرمان
@@ -31,7 +31,8 @@ def main():
     # errors = auditor.run_analysis(c_ast)
 
     # فعلا به صورت موقت یک لیست خالی برای خطاها در نظر می‌گیریم
-    errors = []
+    auditor = SecurityAuditor(dsl_rules)
+    errors = auditor.run_analysis(c_ast)
 
     # بخش ۴: گزارش نتایج
     if errors:

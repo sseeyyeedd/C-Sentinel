@@ -7,7 +7,8 @@ class DSLRule:
     def __init__(self, name):
         self.name = name
         self.blocks = []
-        self.calls = [] 
+        self.calls = []
+        self.literal_requires = []
 
     def __repr__(self):
         return f"DSLRule(name={self.name}, blocks={self.blocks}, calls={self.calls})"
@@ -31,14 +32,16 @@ class RuleVisitor(CSentinelVisitor):
                 rule.blocks.append((op, message))
             elif isinstance(child, CSentinelParser.OnRuleContext):
                 func = child.ID(0).getText()
-                args = [arg.getText() for arg in child.ID()[1:]]
-                ifStmt = child.ifStmt()
+                args = [arg.getText() for arg in child.ID()[1:]] if child.ID() else []
+                ifStmt = child.ifStmt(0) if child.ifStmt() else None
                 if ifStmt:
-                    left = ifStmt.expr().ID(0).getText()
-                    right = ifStmt.expr().ID(1).getText()
-                    condition = f"{left} + {right}"
+                    condition = ifStmt.expr().getText()
                     message = ifStmt.action().STRING().getText().strip('"')
                     rule.calls.append({"func": func, "args": args, "condition": condition, "message": message})
+                elif child.requireLiteralStmt():
+                    requireStmt = child.requireLiteralStmt(0)
+                    message = requireStmt.action().STRING().getText().strip('"')
+                    rule.literal_requires.append({"func": func, "message": message})
         self.rules.append(rule)
 
 

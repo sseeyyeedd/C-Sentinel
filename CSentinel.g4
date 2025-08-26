@@ -6,11 +6,15 @@ rule: RULE_KEYWORD ID LBRACE (blockRule | onRule)* RBRACE;
 
 blockRule: BLOCK_KEYWORD ID LBRACE action RBRACE;
 
-onRule: ON_KEYWORD CALL_KEYWORD LPAREN ID (COMMA ID)* RPAREN LBRACE (ifStmt | action)* RBRACE;
+onRule: ON_KEYWORD CALL_KEYWORD ID LPAREN (ID (COMMA ID)*)? RPAREN LBRACE (ifStmt | requireLiteralStmt | action)* RBRACE;
+
+requireLiteralStmt: REQUIRE_LITERAL_FORMAT_KEYWORD LBRACE action RBRACE;
 
 ifStmt: IF_KEYWORD expr OVERFLOWS_KEYWORD LBRACE action RBRACE;
 
-expr: ID PLUS ID;
+expr: term ((PLUS | MINUS) term)*;
+term: factor ((STAR | DIV) factor)*;
+factor: LPAREN expr RPAREN | ID | NUMBER;
 
 action: ERROR_KEYWORD STRING;
 
@@ -27,7 +31,12 @@ LPAREN: '(';
 RPAREN: ')';
 COMMA: ',';
 PLUS: '+';
+MINUS: '-';
+STAR: '*';
+DIV: '/';
+REQUIRE_LITERAL_FORMAT_KEYWORD: 'require_literal_format';
 
+NUMBER : [0-9]+;
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 STRING: '"' (~["\r\n])* '"';
 WS: [ \t\r\n]+ -> skip;
