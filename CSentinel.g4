@@ -2,15 +2,23 @@ grammar CSentinel;
 
 senFile: rule* EOF;
 
-rule: RULE_KEYWORD ID LBRACE (blockRule | onRule)* RBRACE;
+rule: RULE_KEYWORD ID LBRACE (blockRule | onRule | sourceRule | sinkRule | sanitizerRule)* RBRACE;
 
 blockRule: BLOCK_KEYWORD ID LBRACE action RBRACE;
 
-onRule: ON_KEYWORD CALL_KEYWORD ID LPAREN (ID (COMMA ID)*)? RPAREN LBRACE (ifStmt | requireLiteralStmt | action)* RBRACE;
+onRule: ON_KEYWORD CALL_KEYWORD ID LPAREN (ID (COMMA ID)*)? RPAREN LBRACE (ifStmt | requireLiteralStmt | requireNullStmt | action)* RBRACE;
 
 requireLiteralStmt: REQUIRE_LITERAL_FORMAT_KEYWORD LBRACE action RBRACE;
 
+requireNullStmt: REQUIRE_NULL_AFTER_KEYWORD LBRACE action RBRACE;
+
 ifStmt: IF_KEYWORD expr OVERFLOWS_KEYWORD LBRACE action RBRACE;
+
+sourceRule: SOURCE_KEYWORD ID LBRACE action RBRACE;
+
+sinkRule: SINK_KEYWORD ID LBRACE action RBRACE;
+
+sanitizerRule: SANITIZER_KEYWORD ID LBRACE RBRACE;
 
 expr: term ((PLUS | MINUS) term)*;
 term: factor ((STAR | DIV) factor)*;
@@ -35,7 +43,10 @@ MINUS: '-';
 STAR: '*';
 DIV: '/';
 REQUIRE_LITERAL_FORMAT_KEYWORD: 'require_literal_format';
-
+REQUIRE_NULL_AFTER_KEYWORD: 'require_null_after';
+SOURCE_KEYWORD: 'source';
+SINK_KEYWORD: 'sink';
+SANITIZER_KEYWORD: 'sanitizer';
 NUMBER : [0-9]+;
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 STRING: '"' (~["\r\n])* '"';

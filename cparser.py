@@ -26,7 +26,25 @@ def parse_c_code(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             user_code = f.read()
 
-        # Step 2: Remove ALL preprocessor directives from the user's code.
+        # Step 1: Create a regex to find and remove all C-style comments.
+        # This handles both // single-line and /* multi-line */ comments.
+        comment_re = re.compile(
+            r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
+            re.DOTALL | re.MULTILINE
+        )
+
+        def remove_comments(text):
+            def replacer(match):
+                s = match.group(0)
+                if s.startswith('/'):
+                    return " "
+                else:
+                    return s
+
+            return re.sub(comment_re, replacer, text)
+
+        code_no_comments = remove_comments(user_code)
+        # Step 3 Remove ALL preprocessor directives from the user's code.
         # This regex finds any line starting with '#' and removes it.
         cleaned_code = re.sub(r'^#.*$', '', user_code, flags=re.MULTILINE)
 

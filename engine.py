@@ -1,6 +1,58 @@
 # engine.py
 from pycparser import c_ast
 
+
+class TaintAnalysisVisitor(c_ast.NodeVisitor):
+    def __init__(self, dsl_rules):
+        self.dsl_rules = dsl_rules
+        self.tainted_vars = set()
+        self.errors = []
+
+        # Extract sources, sinks, and sanitizers from the rules
+        self.sources = {s['func']: s['message'] for r in dsl_rules for s in r.sources}
+        self.sinks = {s['func']: s['message'] for r in dsl_rules for s in r.sinks}
+        self.sanitizers = {s for r in dsl_rules for s in r.sanitizers}
+
+    def visit_Assignment(self, node):
+        # Taint propagation: if the right side is tainted, the left side becomes tainted.
+        # This is a simplification; a full engine would need to check expressions deeply.
+        if isinstance(node.rvalue, c_ast.ID) and node.rvalue.name in self.tainted_vars:
+            self.tainted_vars.add(node.lvalue.name)
+
+        # Check for sanitization
+        if isinstance(node.rvalue, c_ast.FuncCall) and node.rvalue.name.name in self.sanitizers:
+            if node.lvalue.name in self.tainted_vars:
+                self.tainted_vars.remove(node.lvalue.name) # It's now clean
+
+        self.generic_visit(node)
+
+    def visit_FuncCall(self, node):
+        func_name = node.name.name
+
+        # Is this function a source of taint?
+        if func_name in self.sources:
+            # Simplification: assume the first argument to a source function becomes tainted.
+            # E.g., in scanf("%s", &name), 'name' becomes tainted.
+            if node.args and node.args.exprs:
+                # The argument to scanf is often &var, which is a UnaryOp.
+                first_arg = node.args.exprs[0]
+                if isinstance(first_arg, c_ast.UnaryOp) and first_arg.op == '&':
+                    if isinstance(first_arg.expr, c_ast.ID):
+                        self.tainted_vars.add(first_arg.expr.name)
+
+        # Is this function a sink, and is it being called with tainted data?
+        if func_name in self.sinks:
+            if node.args and node.args.exprs:
+                for arg in node.args.exprs:
+                    if isinstance(arg, c_ast.ID) and arg.name in self.tainted_vars:
+                        self.errors.append(
+                            f"Line {node.name.coord.line}: Taint Violation! "
+                            f"Tainted variable '{arg.name}' is used in sink function '{func_name}'. "
+                            f"Message: {self.sinks[func_name]}"
+                        )
+                        break # Report once per sink call
+
+        self.generic_visit(node)
 # A new, small visitor just for finding a specific math operation
 class FindBinaryOpVisitor(c_ast.NodeVisitor):
     def __init__(self, op_to_find):
@@ -22,9 +74,9 @@ class SecurityAuditor(c_ast.NodeVisitor):
 
     def run_analysis(self, c_ast):
         """Public method to start the analysis."""
-        self.errors = []
-        self.visit(c_ast)
-        return self.errors
+        taint_visitor = TaintAnalysisVisitor(self.dsl_rules)
+        taint_visitor.visit(c_ast)
+        return taint_visitor.errors
 
     def visit_FuncCall(self, node):
         """
@@ -101,3 +153,55 @@ class SecurityAuditor(c_ast.NodeVisitor):
                                 f"Message: {require_rule['message']}"
                             )
                             self.errors.append(error_msg)
+
+    def visit_Compound(self, node):
+        """
+        This method is called for every compound block (i.e., code inside {}).
+        This is where we can check for rules involving sequences of statements.
+        """
+        # --- NEW: Rule implementation for 'require_null_after' ---
+        # Get a list of all functions that require a null check after them
+        monitored_funcs = {}
+        for rule in self.dsl_rules:
+            for req in rule.null_after_requires:
+                monitored_funcs[req['func']] = {'rule': rule.name, 'message': req['message']}
+
+        # Iterate through the statements in the block, looking ahead by one
+        if node.block_items:
+            for i in range(len(node.block_items) - 1):
+                current_stmt = node.block_items[i]
+                next_stmt = node.block_items[i + 1]
+
+                # Check if the current statement is a call to a monitored function (e.g., free)
+                if isinstance(current_stmt, c_ast.FuncCall) and current_stmt.name.name in monitored_funcs:
+                    func_name = current_stmt.name.name
+                    # Check that the function call has an argument
+                    if not current_stmt.args or not current_stmt.args.exprs:
+                        continue
+
+                    pointer_freed = current_stmt.args.exprs[0].name
+
+                    # Check if the next statement is an assignment (ptr = NULL)
+                    is_assignment = isinstance(next_stmt, c_ast.Assignment) and next_stmt.op == '='
+                    if is_assignment:
+                        # Check if it's assigning to the same pointer that was freed
+                        assigned_to = next_stmt.lvalue.name
+                        # Check if the value being assigned is NULL (represented as a Constant 0)
+                        is_null_assignment = (isinstance(next_stmt.rvalue, c_ast.Constant) and
+                                              next_stmt.rvalue.value == '0')
+
+                        if assigned_to == pointer_freed and is_null_assignment:
+                            # This is the correct pattern, so we do nothing and continue
+                            continue
+
+                    # If we reach here, it means the correct pattern was not found
+                    rule_info = monitored_funcs[func_name]
+                    error_msg = (
+                        f"Line {current_stmt.coord.line}: Violation of rule '{rule_info['rule']}'. "
+                        f"Pointer '{pointer_freed}' is not set to NULL immediately after call to '{func_name}'. "
+                        f"Message: {rule_info['message']}"
+                    )
+                    self.errors.append(error_msg)
+
+        # It's important to still visit children of this block
+        self.generic_visit(node)

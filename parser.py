@@ -9,6 +9,10 @@ class DSLRule:
         self.blocks = []
         self.calls = []
         self.literal_requires = []
+        self.null_after_requires = []
+        self.sources = []
+        self.sinks = []
+        self.sanitizers = []
 
     def __repr__(self):
         return f"DSLRule(name={self.name}, blocks={self.blocks}, calls={self.calls})"
@@ -42,6 +46,21 @@ class RuleVisitor(CSentinelVisitor):
                     requireStmt = child.requireLiteralStmt(0)
                     message = requireStmt.action().STRING().getText().strip('"')
                     rule.literal_requires.append({"func": func, "message": message})
+                elif child.requireNullStmt():
+                    requireStmt = child.requireNullStmt(0)
+                    message = requireStmt.action().STRING().getText().strip('"')
+                    rule.null_after_requires.append({"func": func, "message": message})
+            elif isinstance(child, CSentinelParser.SourceRuleContext):
+                func_name = child.ID().getText()
+                message = child.action().STRING().getText().strip('"')
+                rule.sources.append({'func': func_name, 'message': message})
+            elif isinstance(child, CSentinelParser.SinkRuleContext):
+                func_name = child.ID().getText()
+                message = child.action().STRING().getText().strip('"')
+                rule.sinks.append({'func': func_name, 'message': message})
+            elif isinstance(child, CSentinelParser.SanitizerRuleContext):
+                func_name = child.ID().getText()
+                rule.sanitizers.append(func_name)
         self.rules.append(rule)
 
 

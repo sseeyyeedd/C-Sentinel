@@ -17,3 +17,22 @@ rule FormatStringCheck {
         }
     }
 }
+rule EnforceNullAfterFree {
+    on call free() {
+        require_null_after {
+           error "Dangling pointer risk. Pointer must be nullified after free."
+        }
+    }
+}
+rule TaintAnalysisExample {
+    source scanf {
+        error "scanf introduces untrusted user data."
+    }
+
+    sink strcpy {
+        error "strcpy is a dangerous sink for untrusted data."
+    }
+
+    sanitizer clean_string {
+    }
+}
