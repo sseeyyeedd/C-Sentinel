@@ -75,8 +75,14 @@ class SecurityAuditor(c_ast.NodeVisitor):
     def run_analysis(self, c_ast):
         """Public method to start the analysis."""
         taint_visitor = TaintAnalysisVisitor(self.dsl_rules)
+        self.visit(c_ast)
         taint_visitor.visit(c_ast)
-        return taint_visitor.errors
+        # return taint_visitor.errors
+
+
+        for error in taint_visitor.errors:
+            self.errors.append(error)
+        return self.errors
 
     def visit_FuncCall(self, node):
         """
