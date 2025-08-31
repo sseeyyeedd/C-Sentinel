@@ -20,6 +20,13 @@ rule FormatStringCheck {
         }
     }
 }
+rule FreeUnusedMemory {
+    on call malloc(ptr) {
+        require_auto_free_unused {
+            error "Allocated memory for 'ptr' is not used. Free and nullify to prevent memory leak and dangling pointer."
+        }
+    }
+}
 rule EnforceNullAfterFree {
     on call free() {
         require_null_after {

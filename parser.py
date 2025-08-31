@@ -11,6 +11,7 @@ class DSLRule:
         self.literal_requires = []
         self.null_after_requires = []
         self.double_free_checks = []
+        self.free_unused_checks = []
         self.sources = []
         self.sinks = []
         self.sanitizers = []
@@ -55,6 +56,10 @@ class RuleVisitor(CSentinelVisitor):
                     requireStmt = child.requireNoDoubleFreeStmt(0)
                     message = requireStmt.action().STRING().getText().strip('"')
                     rule.double_free_checks.append({"func": func, "message": message})
+                elif child.requireAutoFreeUnusedStmt():
+                    requireStmt = child.requireAutoFreeUnusedStmt(0)
+                    message = requireStmt.action().STRING().getText().strip('"')
+                    rule.free_unused_checks.append({"func": func, "message": message})
             elif isinstance(child, CSentinelParser.SourceRuleContext):
                 func_name = child.ID().getText()
                 message = child.action().STRING().getText().strip('"')
