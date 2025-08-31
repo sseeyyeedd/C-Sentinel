@@ -2,6 +2,9 @@ rule BanForbiddenFunctions {
     block system {
         error "The function system() is forbidden due to command injection risks."
     }
+    block popen {
+        error "The function popen() is forbidden due to command injection risks."
+    }
 }
 rule IntegerOverflowCheck {
     on call safe_malloc(size) {
