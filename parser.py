@@ -10,6 +10,7 @@ class DSLRule:
         self.calls = []
         self.literal_requires = []
         self.null_after_requires = []
+        self.double_free_checks = []
         self.sources = []
         self.sinks = []
         self.sanitizers = []
@@ -50,6 +51,10 @@ class RuleVisitor(CSentinelVisitor):
                     requireStmt = child.requireNullStmt(0)
                     message = requireStmt.action().STRING().getText().strip('"')
                     rule.null_after_requires.append({"func": func, "message": message})
+                elif child.requireNoDoubleFreeStmt():
+                    requireStmt = child.requireNoDoubleFreeStmt(0)
+                    message = requireStmt.action().STRING().getText().strip('"')
+                    rule.double_free_checks.append({"func": func, "message": message})
             elif isinstance(child, CSentinelParser.SourceRuleContext):
                 func_name = child.ID().getText()
                 message = child.action().STRING().getText().strip('"')

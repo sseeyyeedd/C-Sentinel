@@ -24,6 +24,13 @@ rule EnforceNullAfterFree {
         }
     }
 }
+rule BanDoubleFree {
+    on call free(ptr) {
+        require_no_double_free {
+            error "You can't free a variable which has been freed."
+        }
+    }
+}
 rule TaintAnalysisExample {
     source scanf {
         error "scanf introduces untrusted user data."

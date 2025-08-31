@@ -23,6 +23,8 @@ def main():
         print("[!] Failed to parse C code. Please check the source file for errors. Exiting.")
         return
     print("[*] C code parsed successfully into an AST.")
+    # print(c_ast)
+
 
     # بخش ۳: فراخوانی موتور تحلیل (در گام بعدی تکمیل می‌شود)
     print("\n--- Running Security Analysis ---")
