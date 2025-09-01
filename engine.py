@@ -1,5 +1,6 @@
 # engine.py
 from pycparser import c_ast
+from cparser import header_defs_lines_count
 
 
 class TaintAnalysisVisitor(c_ast.NodeVisitor):
@@ -46,7 +47,7 @@ class TaintAnalysisVisitor(c_ast.NodeVisitor):
                 for arg in node.args.exprs:
                     if isinstance(arg, c_ast.ID) and arg.name in self.tainted_vars:
                         self.errors.append(
-                            f"Line {node.name.coord.line}: Taint Violation! "
+                            f"Line {node.name.coord.line - header_defs_lines_count}: Taint Violation! "
                             f"Tainted variable '{arg.name}' is used in sink function '{func_name}'. "
                             f"Message: {self.sinks[func_name]}"
                         )
@@ -99,7 +100,7 @@ class SecurityAuditor(c_ast.NodeVisitor):
                 if function_name == blocked_func:
                     # If the function call in the C code matches a blocked function...
                     error_msg = (
-                        f"Line {node.name.coord.line}: Violation of rule '{rule.name}'. "
+                        f"Line {node.name.coord.line - header_defs_lines_count}: Violation of rule '{rule.name}'. "
                         f"Forbidden function call to '{blocked_func}'. "
                         f"Message: {message}"
                     )
@@ -131,7 +132,7 @@ class SecurityAuditor(c_ast.NodeVisitor):
                             op_visitor.visit(arg_node)
                             if op_visitor.found:
                                 error_msg = (
-                                    f"Line {node.name.coord.line}: Violation of rule '{rule.name}'. "
+                                    f"Line {node.name.coord.line - header_defs_lines_count}: Violation of rule '{rule.name}'. "
                                     f"Potential overflow with '{op_to_find}' in an argument to '{function_name}'. "
                                     f"Message: {call_rule['message']}"
                                 )
@@ -154,7 +155,7 @@ class SecurityAuditor(c_ast.NodeVisitor):
 
                         if not is_string_literal:
                             error_msg = (
-                                f"Line {node.name.coord.line}: Violation of rule '{rule.name}'. "
+                                f"Line {node.name.coord.line - header_defs_lines_count}: Violation of rule '{rule.name}'. "
                                 f"Call to '{function_name}' requires a string literal as the first argument. "
                                 f"Message: {require_rule['message']}"
                             )
@@ -203,7 +204,7 @@ class SecurityAuditor(c_ast.NodeVisitor):
                     # If we reach here, it means the correct pattern was not found
                     rule_info = monitored_funcs[func_name]
                     error_msg = (
-                        f"Line {current_stmt.coord.line}: Violation of rule '{rule_info['rule']}'. "
+                        f"Line {current_stmt.coord.line - header_defs_lines_count}: Violation of rule '{rule_info['rule']}'. "
                         f"Pointer '{pointer_freed}' is not set to NULL immediately after call to '{func_name}'. "
                         f"Message: {rule_info['message']}"
                     )

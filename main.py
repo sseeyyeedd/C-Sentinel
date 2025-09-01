@@ -39,8 +39,10 @@ def main():
     # بخش ۴: گزارش نتایج
     if errors:
         print(f"\n[!] Found {len(errors)} security violation(s):")
+        print()
         for error in errors:
             print(f"  - {error}")
+            print()
     else:
         print("\n[*] Analysis complete. No violations found (engine not yet implemented).")
 

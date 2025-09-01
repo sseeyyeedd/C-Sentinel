@@ -15,6 +15,9 @@ MINIMAL_C_DEFS = """
     typedef int ptrdiff_t;
 """
 
+header_defs_lines_count = len(MINIMAL_C_DEFS.splitlines()) if MINIMAL_C_DEFS else 0
+
+
 def parse_c_code(file_path):
     """
     Parses a C file using a pure Python approach. It combines a minimal
