@@ -175,9 +175,10 @@ class SecurityAuditor(c_ast.NodeVisitor):
 
         # Iterate through the statements in the block, looking ahead by one
         if node.block_items:
-            for i in range(len(node.block_items) - 1):
+            n = len(node.block_items)
+            for i in range(n):
                 current_stmt = node.block_items[i]
-                next_stmt = node.block_items[i + 1]
+                next_stmt = node.block_items[i + 1] if i + 1 < n else None
 
                 # Check if the current statement is a call to a monitored function (e.g., free)
                 if isinstance(current_stmt, c_ast.FuncCall) and current_stmt.name.name in monitored_funcs:
@@ -188,27 +189,56 @@ class SecurityAuditor(c_ast.NodeVisitor):
 
                     pointer_freed = current_stmt.args.exprs[0].name
 
-                    # Check if the next statement is an assignment (ptr = NULL)
-                    is_assignment = isinstance(next_stmt, c_ast.Assignment) and next_stmt.op == '='
-                    if is_assignment:
-                        # Check if it's assigning to the same pointer that was freed
-                        assigned_to = next_stmt.lvalue.name
-                        # Check if the value being assigned is NULL (represented as a Constant 0)
-                        is_null_assignment = (isinstance(next_stmt.rvalue, c_ast.Constant) and
-                                              next_stmt.rvalue.value == '0')
+                    nullified = False
+                    if next_stmt is not None:
+                        is_assignment = isinstance(next_stmt, c_ast.Assignment) and next_stmt.op == '='
+                        if is_assignment:
+                            assigned_to = next_stmt.lvalue.name
+                            is_null_assignment = (
+                                (isinstance(next_stmt.rvalue, c_ast.Constant) and next_stmt.rvalue.value == '0') or
+                                (isinstance(next_stmt.rvalue, c_ast.ID) and next_stmt.rvalue.name == 'NULL')
+                            )
+                            if assigned_to == pointer_freed and is_null_assignment:
+                                nullified = True
+                    # If not nullified, or if it's the last statement, report error
+                    if not nullified:
+                        rule_info = monitored_funcs[func_name]
+                        error_msg = (
+                            f"Line {current_stmt.coord.line - header_defs_lines_count}: Violation of rule '{rule_info['rule']}'. "
+                            f"Pointer '{pointer_freed}' is not set to NULL immediately after call to '{func_name}'. "
+                            f"Message: {rule_info['message']}"
+                        )
+                        self.errors.append(error_msg)
 
-                        if assigned_to == pointer_freed and is_null_assignment:
-                            # This is the correct pattern, so we do nothing and continue
-                            continue
+        # --- NEW: Rule implementation for double-free detection ---
+        double_free_funcs = set()
+        for rule in self.dsl_rules:
+            for func in getattr(rule, 'double_free_checks', []):
+                # If func is a dict, extract the function name
+                if isinstance(func, dict) and 'func' in func:
+                    double_free_funcs.add(func['func'])
+                else:
+                    double_free_funcs.add(func)
 
-                    # If we reach here, it means the correct pattern was not found
-                    rule_info = monitored_funcs[func_name]
-                    error_msg = (
-                        f"Line {current_stmt.coord.line - header_defs_lines_count}: Violation of rule '{rule_info['rule']}'. "
-                        f"Pointer '{pointer_freed}' is not set to NULL immediately after call to '{func_name}'. "
-                        f"Message: {rule_info['message']}"
-                    )
-                    self.errors.append(error_msg)
+        freed_vars = set()
+        if node.block_items:
+            for stmt in node.block_items:
+                if isinstance(stmt, c_ast.FuncCall) and stmt.name.name in double_free_funcs:
+                    if stmt.args and stmt.args.exprs:
+                        arg = stmt.args.exprs[0]
+                        pointer_name = None
+                        if isinstance(arg, c_ast.ID):
+                            pointer_name = arg.name
+                        # You may want to handle more complex pointer expressions here
+                        if pointer_name:
+                            if pointer_name in freed_vars:
+                                error_msg = (
+                                    f"Line {stmt.coord.line - header_defs_lines_count}: Double-free violation. "
+                                    f"Pointer '{pointer_name}' is freed more than once."
+                                )
+                                self.errors.append(error_msg)
+                            else:
+                                freed_vars.add(pointer_name)
 
-        # It's important to still visit children of this block
+
         self.generic_visit(node)

@@ -5,6 +5,9 @@ rule BanForbiddenFunctions {
     block popen {
         error "The function popen() is forbidden due to command injection risks."
     }
+    block _popen {
+        error "The function _popen() is forbidden due to command injection risks."
+    }
 }
 rule IntegerOverflowCheck {
     on call safe_malloc(size) {

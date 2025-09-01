@@ -3,12 +3,14 @@
 void safe_malloc(int size) {}
 void clean_string(char* s) {}
 void memory_operations(){
+    FILE* a = _popen("ls", NULL);
     char* ptr1 = (char*)malloc(10);
     char* ptr2 = (char*)malloc(10);
     free(ptr1);
     printf("ptr1 was freed");
     free(ptr2);
     ptr2 = NULL;
+    free(ptr2);
 }
 int main() {
     char user_input[] = "Hello from user";
