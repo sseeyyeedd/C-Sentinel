@@ -166,6 +166,118 @@ class SecurityAuditor(c_ast.NodeVisitor):
         This method is called for every compound block (i.e., code inside {}).
         This is where we can check for rules involving sequences of statements.
         """
+        # --- NEW: implementation for FreeUnusedMemory detection ---
+        free_unused_funcs = set()
+        for rule in self.dsl_rules:
+            for func in getattr(rule, 'free_unused_checks', []):
+                if isinstance(func, dict) and 'func' in func:
+                    free_unused_funcs.add(func['func'])
+                else:
+                    free_unused_funcs.add(func)
+
+        # Track malloc'd pointers and their usage
+        malloc_calls = []  # List of (pointer_name, stmt)
+        used_vars = set()
+
+        # Helper: recursively find all used variable names in an AST node
+        def find_used_vars(ast_node):
+            if isinstance(ast_node, c_ast.ID):
+                used_vars.add(ast_node.name)
+            elif isinstance(ast_node, c_ast.StructRef):
+                # e.g., ptr->field or ptr.field
+                find_used_vars(ast_node.name)
+            elif isinstance(ast_node, c_ast.ArrayRef):
+                # e.g., ptr[index]
+                find_used_vars(ast_node.name)
+                find_used_vars(ast_node.subscript)
+            elif isinstance(ast_node, c_ast.UnaryOp):
+                find_used_vars(ast_node.expr)
+            elif isinstance(ast_node, c_ast.BinaryOp):
+                find_used_vars(ast_node.left)
+                find_used_vars(ast_node.right)
+            elif isinstance(ast_node, c_ast.FuncCall):
+                find_used_vars(ast_node.name)
+                if ast_node.args:
+                    for arg in getattr(ast_node.args, 'exprs', []):
+                        find_used_vars(arg)
+            elif isinstance(ast_node, c_ast.Assignment):
+                find_used_vars(ast_node.lvalue)
+                find_used_vars(ast_node.rvalue)
+            # Recursively check children for other node types
+            for child in getattr(ast_node, 'children', lambda: [])():
+                find_used_vars(child)
+
+        if node.block_items:
+            for stmt in node.block_items:
+                # Detect malloc calls
+                # Detect malloc calls in assignments and declarations with initialization
+                if isinstance(stmt, c_ast.Assignment):
+                    rvalue = stmt.rvalue
+                    if isinstance(rvalue, c_ast.Cast) and isinstance(rvalue.expr, c_ast.FuncCall):
+                        func_call = rvalue.expr
+                        if func_call.name.name in free_unused_funcs:
+                            if func_call.args and func_call.args.exprs:
+                                if isinstance(stmt.lvalue, c_ast.ID):
+                                    malloc_calls.append((stmt.lvalue.name, stmt))
+                    elif isinstance(rvalue, c_ast.FuncCall) and rvalue.name.name in free_unused_funcs:
+                        if rvalue.args and rvalue.args.exprs:
+                            if isinstance(stmt.lvalue, c_ast.ID):
+                                malloc_calls.append((stmt.lvalue.name, stmt))
+
+                # Handle Decl with initialization: e.g., char* abcd = (char*)malloc(10);
+                if isinstance(stmt, c_ast.Decl) and stmt.init is not None:
+                    init = stmt.init
+                    if isinstance(init, c_ast.Cast) and isinstance(init.expr, c_ast.FuncCall):
+                        func_call = init.expr
+                        if func_call.name.name in free_unused_funcs:
+                            if func_call.args and func_call.args.exprs:
+                                malloc_calls.append((stmt.name, stmt))
+                    elif isinstance(init, c_ast.FuncCall) and init.name.name in free_unused_funcs:
+                        if init.args and init.args.exprs:
+                            malloc_calls.append((stmt.name, stmt))
+                # Recursively find all used variable names in the statement
+                find_used_vars(stmt)
+
+            # After scanning all statements, check for malloc'd pointers that are neither used nor freed
+            for pointer_name, malloc_stmt in malloc_calls:
+                was_freed = False
+                for stmt in node.block_items:
+                    if isinstance(stmt, c_ast.FuncCall) and stmt.name.name == 'free':
+                        if stmt.args and stmt.args.exprs:
+                            arg = stmt.args.exprs[0]
+                            if isinstance(arg, c_ast.ID) and arg.name == pointer_name:
+                                was_freed = True
+                                break
+                # Only report if pointer is neither used nor freed
+                if pointer_name not in used_vars and not was_freed:
+                    for rule in self.dsl_rules:
+                        for check in getattr(rule, 'free_unused_checks', []):
+                            func_name = check['func'] if isinstance(check, dict) and 'func' in check else check
+                            # malloc_stmt may be Decl or Assignment; get function name accordingly
+                            malloc_func_name = None
+                            if hasattr(malloc_stmt, 'init') and malloc_stmt.init is not None:
+                                # Decl with init
+                                if isinstance(malloc_stmt.init, c_ast.Cast) and isinstance(malloc_stmt.init.expr, c_ast.FuncCall):
+                                    malloc_func_name = malloc_stmt.init.expr.name.name
+                                elif isinstance(malloc_stmt.init, c_ast.FuncCall):
+                                    malloc_func_name = malloc_stmt.init.name.name
+                            elif hasattr(malloc_stmt, 'rvalue') and malloc_stmt.rvalue is not None:
+                                # Assignment
+                                if isinstance(malloc_stmt.rvalue, c_ast.Cast) and isinstance(malloc_stmt.rvalue.expr, c_ast.FuncCall):
+                                    malloc_func_name = malloc_stmt.rvalue.expr.name.name
+                                elif isinstance(malloc_stmt.rvalue, c_ast.FuncCall):
+                                    malloc_func_name = malloc_stmt.rvalue.name.name
+                            # Fallback: if malloc_stmt.name is a string
+                            if malloc_func_name is None and hasattr(malloc_stmt, 'name') and isinstance(malloc_stmt.name, str):
+                                malloc_func_name = malloc_stmt.name
+                            if func_name == malloc_func_name:
+                                error_msg = (
+                                    f"Line {malloc_stmt.coord.line - header_defs_lines_count}: Violation of rule '{rule.name}'. "
+                                    f"Allocated memory for pointer '{pointer_name}' is not used or freed before end of block. "
+                                    f"Message: {check['message'] if isinstance(check, dict) and 'message' in check else ''}"
+                                )
+                                self.errors.append(error_msg)
+        
         # --- NEW: Rule implementation for 'require_null_after' ---
         # Get a list of all functions that require a null check after them
         monitored_funcs = {}
