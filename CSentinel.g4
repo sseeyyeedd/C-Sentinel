@@ -25,7 +25,9 @@ sinkRule: SINK_KEYWORD ID LBRACE action RBRACE;
 sanitizerRule: SANITIZER_KEYWORD ID LBRACE RBRACE;
 
 expr: term ((PLUS | MINUS) term)*;
+
 term: factor ((STAR | DIV) factor)*;
+
 factor: LPAREN expr RPAREN | ID | NUMBER;
 
 action: ERROR_KEYWORD STRING;
