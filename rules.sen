@@ -56,3 +56,32 @@ rule TaintAnalysisExample {
     sanitizer clean_string {
     }
 }
+rule CheckNullPointer {
+    on access ptr {
+        require_not_null {
+            error "Accessing a potentially NULL pointer 'ptr'."
+        }
+    }
+}
+rule CheckNullPointerAccess {
+    on access dangling_ptr {
+        require_not_null {
+            error "Potential NULL pointer dereference. The pointer 'dangling_ptr' might be NULL here."
+        }
+    }
+}
+rule IntegerOverflowCheck {
+    on call safe_malloc(size) {
+        if size + sizePrime overflows {
+            error "Integer overflow may occur in size calculation."
+        }
+    }
+}
+
+rule SmartNullCheck {
+    on access smart_ptr {
+        require_not_null {
+            error "This pointer might be NULL."
+        }
+    }
+}

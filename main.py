@@ -18,6 +18,12 @@ def main():
     # print(dsl_rules) # می‌توانید برای دیباگ کردن، قوانین خوانده شده را چاپ کنید
 
     print(f"[*] Parsing C source from: {args.source}")
+    try :
+        with open(args.source,'r',encoding='utf-8')as f:
+            source_code_lines = f.readlines()
+    except Exception as e:
+        print(f"[!] Error reading source file: {e}")
+        return
     c_ast = parse_c_code(args.source)
     if not c_ast:
         print("[!] Failed to parse C code. Please check the source file for errors. Exiting.")
@@ -33,7 +39,7 @@ def main():
     # errors = auditor.run_analysis(c_ast)
 
     # فعلا به صورت موقت یک لیست خالی برای خطاها در نظر می‌گیریم
-    auditor = SecurityAuditor(dsl_rules)
+    auditor = SecurityAuditor(dsl_rules, source_code_lines)
     errors = auditor.run_analysis(c_ast)
 
     # بخش ۴: گزارش نتایج

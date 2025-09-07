@@ -49,7 +49,7 @@ def parse_c_code(file_path):
         code_no_comments = remove_comments(user_code)
         # Step 3 Remove ALL preprocessor directives from the user's code.
         # This regex finds any line starting with '#' and removes it.
-        cleaned_code = re.sub(r'^#.*$', '', user_code, flags=re.MULTILINE)
+        cleaned_code = re.sub(r'^#.*$', '', code_no_comments, flags=re.MULTILINE)
 
         # Step 3: Combine our minimal definitions with the cleaned user code.
         full_code_to_parse = MINIMAL_C_DEFS + cleaned_code

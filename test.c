@@ -2,6 +2,26 @@
 #include <stdlib.h>
 void safe_malloc(int size) {}
 void clean_string(char* s) {}
+void smart_null_test(char* smart_ptr){
+    if(smart_ptr != NULL){
+        smart_ptr[0] = 'A';
+    }
+    else {
+        smart_ptr[0] = 'B';
+    }
+
+}
+struct MyStruct{
+int data;
+};
+int get_user_size(){
+return 200;
+}
+void null_pointer_test() {
+    struct MyStruct* dangling_ptr = NULL;
+    int value;
+    value = dangling_ptr->data;
+}
 void memory_operations(){
     FILE* a = _popen("ls", NULL);
     char* ptr1 = (char*)malloc(10);
@@ -30,5 +50,18 @@ int main() {
     printf(user_input);
     safe_malloc(size + sizePrime);
     memory_operations();
+    null_pointer_test();
+    int size1 = 2000000000;
+    int size2 = 2000000000;
+    safe_malloc(size1+size2);
+    int user_size = get_user_size();
+    safe_malloc(size1+user_size);
+    int small_size = 100;
+    safe_malloc(size1+small_size);
+
+    char* p1 = (char*)malloc(10);
+    char* p2 = NULL;
+    smart_null_test(p1);
+    smart_null_test(p2);
     return 0;
 }

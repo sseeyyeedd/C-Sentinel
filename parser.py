@@ -15,6 +15,7 @@ class DSLRule:
         self.sources = []
         self.sinks = []
         self.sanitizers = []
+        self.access_requires = []
 
     def __repr__(self):
         return f"DSLRule(name={self.name}, blocks={self.blocks}, calls={self.calls})"
@@ -71,6 +72,12 @@ class RuleVisitor(CSentinelVisitor):
             elif isinstance(child, CSentinelParser.SanitizerRuleContext):
                 func_name = child.ID().getText()
                 rule.sanitizers.append(func_name)
+            elif isinstance(child, CSentinelParser.OnAccessRuleContext):
+                variable_name = child.ID().getText()
+                require_stmt = child.requireNotNullStmt()
+                if require_stmt:
+                    message = require_stmt.action().STRING().getText().strip('"')
+                    rule.access_requires.append({"var": variable_name,"message":message})
         self.rules.append(rule)
 
 
