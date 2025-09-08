@@ -1,0 +1,6 @@
+rule BanForbiddenFunctions {
+    block strcpy {
+        error "The function strcpy() is forbidden."
+    }
+
+}
