@@ -20,16 +20,19 @@ class BlockRuleVisitor(c_ast.NodeVisitor):
     def visit_FuncCall(self, node):
         function_name = node.name.name
         for rule in self.dsl_rules:
-            for blocked_func, message in rule.blocks:
-                if function_name == blocked_func:
+            for block_rule in rule.blocks:
+                if function_name == block_rule['op']:
                     line_num = node.name.coord.line
                     code_line = get_code_line(self.source_lines, line_num)
-                    error_msg = (
-                        f"Line {line_num - header_defs_lines_count}: Violation of rule '{rule.name}'.\n"
-                        f"\t> {code_line}\n"
-                        f"\tMessage: Forbidden function call to '{blocked_func}'. {message}"
+                    message = f"نقض قانون '{rule.name}'. {block_rule['message']}"
+                    violation = Violation(
+                        line=line_num - header_defs_lines_count,
+                        code_line=code_line,
+                        message=message,
+                        suggestion=block_rule['suggestion']  # پیشنهاد را اضافه کنید
                     )
-                    self.errors.append(error_msg)
+                    self.errors.append(violation)
+
 
 class FormatStringVisitor(c_ast.NodeVisitor):
     def __init__(self, dsl_rules, source_lines):
@@ -451,3 +454,13 @@ class SecurityAuditor:
                 all_errors.extend(visitor_instance.errors)
 
         return all_errors
+
+
+# در بالای فایل engine.py
+class Violation:
+    def __init__(self, line, code_line, message, suggestion=None):
+        self.line = line
+        self.code_line = code_line
+        self.message = message
+        self.suggestion = suggestion  # متن پیشنهاد
+

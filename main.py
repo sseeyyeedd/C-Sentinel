@@ -38,11 +38,16 @@ def main():
     errors = run_checker(dsl_rules, c_ast, source_code_lines)
 
     if errors:
-        print(f"\n[!] Found {len(errors)} security violation(s):\n")
-        for error in errors:
-            print(f"  - {error}\n")
+        print(f"\n[!] {len(errors)} تخلف امنیتی پیدا شد:")
+        for v in errors:
+            print("\n----------------------------------------")
+            print(f"- خط {v.line}: {v.message}")
+            print(f"\t> {v.code_line}")
+            if v.suggestion:
+                print(f"\t💡 پیشنهاد: {v.suggestion}")
+        print("----------------------------------------")
     else:
-        print("\n[*] Analysis complete. No violations found.")
+        print("\n[*] تحلیل کامل شد. هیچ تخلفی پیدا نشد.")
 
 if __name__ == '__main__':
     main()

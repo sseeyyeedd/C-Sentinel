@@ -34,7 +34,7 @@ term: factor ((STAR | DIV) factor)*;
 
 factor: LPAREN expr RPAREN | ID | NUMBER;
 
-action: ERROR_KEYWORD STRING;
+action: ERROR_KEYWORD STRING (SUGGEST_KEYWORD STRING)?;
 
 RULE_KEYWORD: 'rule';
 BLOCK_KEYWORD: 'block';
@@ -64,4 +64,6 @@ REQUIRE_NOT_NULL_KEYWORD: 'require_not_null';
 NUMBER : [0-9]+;
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
 STRING: '"' (~["\r\n])* '"';
+SUGGEST_KEYWORD :'suggest';
+FIX_KEYWORDF: 'fix';
 WS: [ \t\r\n]+ -> skip;

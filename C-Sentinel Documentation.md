@@ -1,41 +1,51 @@
-# 🔒 C-Sentinel: Static Analysis & DSL Guide
+#  C-Sentinel: Static Analysis & DSL Guide For Compilers Like C
 
 **C-Sentinel** is a static analysis tool for detecting **security vulnerabilities** in C code using a custom rule-based DSL (Domain-Specific Language).  
 It combines **ANTLR-based DSL parsing** with **pycparser’s C AST parsing** to apply **security checks** automatically.
 
+## Members
+
+-- 1. **Seyed Ali Hosseini** . [Github_link](https://github.com/sseeyyeedd)
+
+-- 2. **Mahdi Mazloomi** . [Github_link](https://github.com/mahdimm82)
+
+-- 3. **Meysam Asali** . [Github_link](https://github.com/MeysamAsali)
+
+-- 4. **Ramin Kalantari** . [Github_link](https://github.com/ramklan1234).
+
 ---
 
-## ⚙️ High-Level Architecture
+##  High-Level Architecture
 
-- 📜 **DSL Rule Parsing**: ANTLR grammar defines the `.sen` DSL, parsed in Python.
+- **DSL Rule Parsing**: ANTLR grammar defines the `.sen` DSL, parsed in Python.
     
-- 🧩 **C Code Parsing**: C source → AST via pycparser.
+-  **C Code Parsing**: C source → AST via pycparser.
     
-- 🔄 **AST Normalization**: Simplifies AST for rule checking.
+-  **AST Normalization**: Simplifies AST for rule checking.
     
-- 🛡 **Security Analysis**: Rule-based checks (buffer overflows, taint, memory safety…).
+- **Security Analysis**: Rule-based checks (buffer overflows, taint, memory safety…).
     
-- 📢 **Reporting**: Violations reported in CLI.
+-  **Reporting**: Violations reported in CLI.
     
 
 Main components:
 
-- 🏁 `main.py`: Entry point, CLI tool, orchestrates workflow.
+-  `main.py`: Entry point, CLI tool, orchestrates workflow.
     
-- 📜 `parser.py`: Parses DSL rules via ANTLR.
+-  `parser.py`: Parses DSL rules via ANTLR.
     
-- 🧩 `cparser.py`: Wraps C parsing logic.
+-  `cparser.py`: Wraps C parsing logic.
     
-- 🧠 `engine.py`: Core analysis + AST visitors (overflow, taint, format, etc.).
+-  `engine.py`: Core analysis + AST visitors (overflow, taint, format, etc.).
     
-- 🕵 `checker.py`: Runs the auditor.
+-  `checker.py`: Runs the auditor.
     
-- 📂 `.antlr/`: ANTLR-generated files.
+-  `.antlr/`: ANTLR-generated files.
     
 
 ---
 
-## 🚀 Using C-Sentinel
+## Using C-Sentinel
 
 ### 1️⃣ Rule System (`.sen` Files)
 
@@ -57,7 +67,7 @@ python main.py --rules <path-to-rules.sen> --source <path-to-source.c>
 - `--source`: Path to `.c` file for analysis.
     
 
-📊 **Example Output:**
+ **Example Output:**
 
 ```
 [*] Loading rules from: rules.sen
@@ -80,30 +90,30 @@ python main.py --rules <path-to-rules.sen> --source <path-to-source.c>
 
 ### 3️⃣ How It Works (Internals)
 
-1. 📥 **Load DSL Rules** (ANTLR → internal rule model).
+1.  **Load DSL Rules** (ANTLR → internal rule model).
     
-2. 🔎 **Parse Source Code** (C → AST via pycparser).
+2.  **Parse Source Code** (C → AST via pycparser).
     
-3. 🔄 **Normalize AST** (simplify for matching).
+3.  **Normalize AST** (simplify for matching).
     
-4. 🧠 **Run Security Analysis**:
+4.  **Run Security Analysis**:
     
     - Stateless checks → forbidden functions, format string rules.
         
     - Stateful checks → integer overflow, taint flow, memory safety.
         
-5. 📢 **Report Violations** (human-readable output).
+5. **Report Violations** (human-readable output).
     
 
 ---
 
-## 📚 CSentinel DSL Grammar Guide
+##  CSentinel DSL Grammar Guide
 
 This section explains how to write `.sen` files.
 
 ---
 
-### 📂 File Structure
+###  File Structure
 
 A `.sen` file = multiple rules:
 
@@ -115,9 +125,9 @@ rule <RuleName> {
 
 ---
 
-### 🛡️ Rule Types
+###  Rule Types
 
-#### 1. 🚫 Block Rule
+#### 1. Block Rule
 
 Block dangerous functions:
 
@@ -127,7 +137,7 @@ block <FunctionName> {
 }
 ```
 
-✅ Example:
+An Example:
 
 ```sen
 block system {
@@ -199,7 +209,7 @@ on access buffer {
 
 ---
 
-#### 4. 🟢 Source Rule
+#### 4. Untrusted Source Rule
 
 Mark a function as an **untrusted data source**:
 
@@ -209,7 +219,7 @@ source <FunctionName> {
 }
 ```
 
-✅ Example:
+An Example:
 
 ```sen
 source getenv {
@@ -219,7 +229,7 @@ source getenv {
 
 ---
 
-#### 5. 🔴 Sink Rule
+#### 5. Dangerous Sink Rule
 
 Mark a function as a **dangerous sink**:
 
@@ -229,7 +239,7 @@ sink <FunctionName> {
 }
 ```
 
-✅ Example:
+An Example:
 
 ```sen
 sink printf {
@@ -239,7 +249,7 @@ sink printf {
 
 ---
 
-#### 6. 🧼 Sanitizer Rule
+#### 6. Sanitizer Rule
 
 Define a **sanitizer** (safe function):
 
@@ -257,7 +267,7 @@ sanitizer escape_html {
 
 ---
 
-### 🧮 Expressions
+### Math Expressions
 
 Rules can use simple math expressions:
 
@@ -280,7 +290,7 @@ Each rule specifies an action, typically:
 error "Message here."
 ```
 
-✅ Example:
+An Example:
 
 ```sen
 error "Freeing memory twice is forbidden."
@@ -288,7 +298,7 @@ error "Freeing memory twice is forbidden."
 
 ---
 
-## ✅ Complete Example
+## A Complete Example
 
 ```sen
 rule MemorySafety {
@@ -325,13 +335,13 @@ rule MemorySafety {
 
 ---
 
-## 📖 References
+## References
 
-- 📘 [pycparser Documentation](https://github.com/eliben/pycparser)
+-  [pycparser Documentation](https://github.com/eliben/pycparser)
     
-- 📗 [ANTLR Documentation](https://www.antlr.org/)
+-  [ANTLR Documentation](https://www.antlr.org/)
     
-- 💻 Project Source: [sseeyyeedd/C-Sentinel](https://github.com/sseeyyeedd/C-Sentinel)
+-  Project Source: [sseeyyeedd/C-Sentinel](https://github.com/sseeyyeedd/C-Sentinel)
     
 
 ---

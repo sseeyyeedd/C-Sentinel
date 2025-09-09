@@ -35,7 +35,11 @@ class RuleVisitor(CSentinelVisitor):
         for child in ctx.children:
             if isinstance(child, CSentinelParser.BlockRuleContext):
                 op = child.ID().getText()
-                message = child.action().STRING().getText().strip('"')
+                action_ctx = child.action()
+                message = child.action().STRING(0).getText().strip('"')
+                suggestion = None
+                if action_ctx.SUGGEST_KEYWORD():  # اگر کلمه کلیدی suggest وجود داشت
+                    suggestion = action_ctx.STRING(1).getText().strip('"')
                 rule.blocks.append((op, message))
             elif isinstance(child, CSentinelParser.OnRuleContext):
                 func = child.ID(0).getText()
@@ -43,31 +47,31 @@ class RuleVisitor(CSentinelVisitor):
                 ifStmt = child.ifStmt(0) if child.ifStmt() else None
                 if ifStmt:
                     condition = ifStmt.expr().getText()
-                    message = ifStmt.action().STRING().getText().strip('"')
+                    message = ifStmt.action().STRING(0).getText().strip('"')
                     rule.calls.append({"func": func, "args": args, "condition": condition, "message": message})
                 elif child.requireLiteralStmt():
                     requireStmt = child.requireLiteralStmt(0)
-                    message = requireStmt.action().STRING().getText().strip('"')
+                    message = requireStmt.action().STRING(0).getText().strip('"')
                     rule.literal_requires.append({"func": func, "message": message})
                 elif child.requireNullStmt():
                     requireStmt = child.requireNullStmt(0)
-                    message = requireStmt.action().STRING().getText().strip('"')
+                    message = requireStmt.action().STRING(0).getText().strip('"')
                     rule.null_after_requires.append({"func": func, "message": message})
                 elif child.requireNoDoubleFreeStmt():
                     requireStmt = child.requireNoDoubleFreeStmt(0)
-                    message = requireStmt.action().STRING().getText().strip('"')
+                    message = requireStmt.action().STRING(0).getText().strip('"')
                     rule.double_free_checks.append({"func": func, "message": message})
                 elif child.requireAutoFreeUnusedStmt():
                     requireStmt = child.requireAutoFreeUnusedStmt(0)
-                    message = requireStmt.action().STRING().getText().strip('"')
+                    message = requireStmt.action().STRING(0).getText().strip('"')
                     rule.free_unused_checks.append({"func": func, "message": message})
             elif isinstance(child, CSentinelParser.SourceRuleContext):
                 func_name = child.ID().getText()
-                message = child.action().STRING().getText().strip('"')
+                message = child.action().STRING(0).getText().strip('"')
                 rule.sources.append({'func': func_name, 'message': message})
             elif isinstance(child, CSentinelParser.SinkRuleContext):
                 func_name = child.ID().getText()
-                message = child.action().STRING().getText().strip('"')
+                message = child.action().STRING(0).getText().strip('"')
                 rule.sinks.append({'func': func_name, 'message': message})
             elif isinstance(child, CSentinelParser.SanitizerRuleContext):
                 func_name = child.ID().getText()
@@ -76,7 +80,7 @@ class RuleVisitor(CSentinelVisitor):
                 variable_name = child.ID().getText()
                 require_stmt = child.requireNotNullStmt()
                 if require_stmt:
-                    message = require_stmt.action().STRING().getText().strip('"')
+                    message = require_stmt.action().STRING(0).getText().strip('"')
                     rule.access_requires.append({"var": variable_name,"message":message})
         self.rules.append(rule)
 
